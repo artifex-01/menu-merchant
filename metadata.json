@@ -1,0 +1,7 @@
+{
+  "name": "Merchant Hub",
+  "description": "A comprehensive dashboard for store owners to manage menus, orders, and store profile.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
