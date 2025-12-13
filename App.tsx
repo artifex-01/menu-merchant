@@ -8,6 +8,7 @@ import QRGenerator from './pages/QRGenerator';
 import Profile from './pages/Profile';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
 
 const App: React.FC = () => {
   return (
@@ -19,6 +20,7 @@ const App: React.FC = () => {
           {/* Auth Routes */}
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
+          <Route path="forgot-password" element={<ForgotPassword />} />
           
           {/* Store Specific Routes */}
           <Route path="store/new" element={<StoreEditor />} />
