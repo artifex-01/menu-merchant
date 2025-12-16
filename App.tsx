@@ -6,6 +6,10 @@ import StoreEditor from './pages/StoreEditor';
 import MenuBuilder from './pages/MenuBuilder';
 import QRGenerator from './pages/QRGenerator';
 import Profile from './pages/Profile';
+import EditProfile from './pages/EditProfile';
+import LoginSecurity from './pages/LoginSecurity';
+import NotificationSettings from './pages/NotificationSettings';
+import HelpCenter from './pages/HelpCenter';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
@@ -28,7 +32,12 @@ const App: React.FC = () => {
           <Route path="store/:id/menu" element={<MenuBuilder />} />
           <Route path="store/:id/qr" element={<QRGenerator />} />
           
+          {/* Profile Routes */}
           <Route path="profile" element={<Profile />} />
+          <Route path="profile/edit" element={<EditProfile />} />
+          <Route path="profile/security" element={<LoginSecurity />} />
+          <Route path="profile/notifications" element={<NotificationSettings />} />
+          <Route path="profile/help" element={<HelpCenter />} />
           
           {/* Default to Login if unknown route, effectively making Login the entry point for new sessions visually */}
           <Route path="*" element={<Navigate to="/login" replace />} />

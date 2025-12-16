@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Edit3, QrCode, Utensils, Circle } from 'lucide-react';
+import { MapPin, Edit3, QrCode, Utensils, Circle, Star } from 'lucide-react';
 import { getStores } from '../services/data';
 import { Store } from '../types';
 
@@ -19,6 +19,14 @@ const MyStores: React.FC = () => {
           {/* Card Header with Cover */}
           <div className="h-32 bg-gray-200 dark:bg-gray-700 relative">
             <img src={store.coverImage} alt="cover" className="w-full h-full object-cover" />
+            
+            {/* Rating Badge */}
+            <div className="absolute top-3 left-3 bg-white/90 dark:bg-gray-900/90 backdrop-blur px-2 py-1 rounded-full flex items-center gap-1 shadow-sm">
+                <Star size={10} className="fill-yellow-400 text-yellow-400" />
+                <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300">{store.rating}</span>
+            </div>
+
+            {/* Status Badge */}
             <div className="absolute top-3 right-3 bg-white/90 dark:bg-gray-900/90 backdrop-blur px-2 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
                 <Circle size={8} className={`fill-current ${store.isOpen ? 'text-green-500' : 'text-red-500'}`} />
                 <span className="text-[10px] font-bold uppercase tracking-wide text-gray-700 dark:text-gray-300">{store.isOpen ? 'Open' : 'Closed'}</span>

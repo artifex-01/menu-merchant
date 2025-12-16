@@ -9,6 +9,7 @@ export interface Store {
   lat: number;
   lng: number;
   lastUpdated: Date;
+  rating: number;
 }
 
 export interface MenuItem {
@@ -20,6 +21,7 @@ export interface MenuItem {
   category: string;
   image: string;
   inStock: boolean;
+  itemType?: 'veg' | 'non-veg';
 }
 
 export interface Category {
@@ -28,9 +30,15 @@ export interface Category {
   name: string;
 }
 
-// Minimal profile for the merchant account itself
+// Full profile for the merchant
 export interface MerchantProfile {
   name: string;
+  id: string;
   email: string;
+  phone: string;
   avatar: string;
+  plan: string;
+  revenue: string;
+  storeCount: number;
+  rating: number;
 }

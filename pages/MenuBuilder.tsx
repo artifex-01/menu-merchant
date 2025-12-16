@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { Plus, Edit2, Trash2, Search, Wand2, Loader2, Image as ImageIcon, CircleSlash, X, ChefHat, Sparkles, DollarSign } from 'lucide-react';
-import { getItems, getCategories, addItem, updateItem, deleteItem, getStoreById } from '../services/data';
+import { Plus, Edit2, Trash2, Search, Image as ImageIcon, CircleSlash, X, ChefHat, DollarSign, Leaf, Drumstick, Upload, Check } from 'lucide-react';
+import { getItems, getCategories, addItem, updateItem, deleteItem, getStoreById, addCategory } from '../services/data';
 import { MenuItem, Category } from '../types';
-import { generateMenuDescription, suggestPrice } from '../services/geminiService';
 
 const MenuBuilder: React.FC = () => {
   const { id: storeId } = useParams();
@@ -15,8 +14,13 @@ const MenuBuilder: React.FC = () => {
   
   // UI State
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [editingItem, setEditingItem] = useState<Partial<MenuItem> | null>(null);
+  
+  // Custom Category State
+  const [showCategoryInput, setShowCategoryInput] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (storeId) {
@@ -33,22 +37,15 @@ const MenuBuilder: React.FC = () => {
     return matchesCategory && matchesSearch;
   });
 
-  const handleGenerateAI = async () => {
-    if (!editingItem?.name) return;
-    setIsGenerating(true);
-    
-    // Run both AI tasks in parallel for speed
-    const [desc, priceStr] = await Promise.all([
-        generateMenuDescription(editingItem.name, editingItem.category || 'General'),
-        suggestPrice(editingItem.name)
-    ]);
-    
-    setEditingItem(prev => ({ 
-        ...prev, 
-        description: desc,
-        price: priceStr ? parseFloat(priceStr) : prev?.price
-    }));
-    setIsGenerating(false);
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && editingItem) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEditingItem({ ...editingItem, image: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSave = () => {
@@ -60,9 +57,10 @@ const MenuBuilder: React.FC = () => {
         name: editingItem.name,
         description: editingItem.description || '',
         price: Number(editingItem.price),
-        category: editingItem.category || categories[0]?.name || 'Mains',
-        image: editingItem.image || `https://picsum.photos/200/200?random=${Math.floor(Math.random() * 100)}`,
+        category: editingItem.category!,
+        image: editingItem.image || '',
         inStock: editingItem.inStock ?? true,
+        itemType: editingItem.itemType
     };
 
     if (editingItem.id) {
@@ -76,7 +74,12 @@ const MenuBuilder: React.FC = () => {
   };
 
   const openAddModal = () => {
-      setEditingItem({ storeId, inStock: true, category: categories[0]?.name });
+      setEditingItem({ 
+          storeId, 
+          inStock: true, 
+          category: '', // Force user to select
+          image: '',
+      });
       setIsModalOpen(true);
   };
 
@@ -91,6 +94,36 @@ const MenuBuilder: React.FC = () => {
           if (storeId) setItems(getItems(storeId));
       }
   };
+
+  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const val = e.target.value;
+      if (val === '__NEW__') {
+          setShowCategoryInput(true);
+      } else {
+          setEditingItem(prev => prev ? ({ ...prev, category: val }) : null);
+      }
+  };
+
+  const handleSaveNewCategory = () => {
+      if (newCategoryName.trim() && storeId) {
+          addCategory(storeId, newCategoryName.trim());
+          const updatedCategories = getCategories(storeId);
+          setCategories(updatedCategories);
+          setEditingItem(prev => prev ? ({ ...prev, category: newCategoryName.trim() }) : null);
+          setNewCategoryName('');
+          setShowCategoryInput(false);
+      }
+  };
+
+  // Form Validation
+  const isFormValid = 
+    editingItem?.name && 
+    editingItem?.name.trim() !== '' &&
+    editingItem?.price !== undefined && 
+    editingItem?.price > 0 &&
+    editingItem?.itemType &&
+    editingItem?.category &&
+    editingItem?.image;
 
   return (
     <div className="pb-6 bg-gray-50 dark:bg-gray-900 min-h-full transition-colors duration-300 relative">
@@ -169,7 +202,11 @@ const MenuBuilder: React.FC = () => {
                 <div className="flex-1 min-w-0 flex flex-col h-24 justify-between">
                     <div>
                         <div className="flex justify-between items-start">
-                            <h3 className="font-bold text-gray-900 dark:text-white truncate pr-2 text-base">{item.name}</h3>
+                            <h3 className="font-bold text-gray-900 dark:text-white truncate pr-2 text-base flex items-center gap-1.5">
+                                {item.itemType === 'veg' && <Leaf size={14} className="text-green-500" />}
+                                {item.itemType === 'non-veg' && <Drumstick size={14} className="text-red-500" />}
+                                {item.name}
+                            </h3>
                             <button 
                                 onClick={() => handleDelete(item.id)}
                                 className="text-gray-300 hover:text-red-500 dark:text-gray-600 dark:hover:text-red-400 -mt-1 -mr-1 p-1 transition-colors"
@@ -207,10 +244,10 @@ const MenuBuilder: React.FC = () => {
       </div>
 
       {/* Floating Add Button */}
-      <div className="fixed bottom-32 left-0 right-0 px-8 flex justify-center max-w-[430px] mx-auto pointer-events-none z-40">
+      <div className="fixed bottom-32 left-0 right-0 px-6 flex justify-center w-full pointer-events-none z-40">
          <button 
             onClick={openAddModal}
-            className="pointer-events-auto bg-gray-900 dark:bg-white text-white dark:text-gray-900 w-full h-14 rounded-2xl shadow-2xl shadow-gray-900/20 dark:shadow-none flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform active:scale-[0.98] font-bold text-sm border border-white/10"
+            className="pointer-events-auto bg-gray-900 dark:bg-white text-white dark:text-gray-900 w-full max-w-md h-14 rounded-2xl shadow-2xl shadow-gray-900/20 dark:shadow-none flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform active:scale-[0.98] font-bold text-sm border border-white/10"
          >
             <Plus size={20} strokeWidth={3} /> 
             <span className="tracking-wide">Add New Item</span>
@@ -227,7 +264,7 @@ const MenuBuilder: React.FC = () => {
             ></div>
 
             {/* Modal Content */}
-            <div className="relative bg-white dark:bg-gray-900 w-full max-w-[430px] rounded-t-[35px] p-6 h-[90vh] overflow-y-auto animate-slide-up shadow-2xl transition-colors duration-300">
+            <div className="relative bg-white dark:bg-gray-900 w-full max-w-md rounded-t-[35px] p-6 h-[90vh] overflow-y-auto animate-slide-up shadow-2xl transition-colors duration-300">
                 {/* Drag Handle */}
                 <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full mx-auto mb-6"></div>
 
@@ -246,8 +283,18 @@ const MenuBuilder: React.FC = () => {
 
                 <div className="space-y-6">
                     {/* Image Upload */}
-                    <div className="h-48 bg-gray-50 dark:bg-gray-800 rounded-[24px] border-2 border-dashed border-gray-200 dark:border-gray-700 overflow-hidden relative group cursor-pointer hover:border-orange-300 dark:hover:border-orange-700 transition-colors">
-                        {editingItem.image && !editingItem.image.includes('random') ? (
+                    <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        onChange={handleImageUpload} 
+                        accept="image/*" 
+                        className="hidden" 
+                    />
+                    <div 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="h-48 bg-gray-50 dark:bg-gray-800 rounded-[24px] border-2 border-dashed border-gray-200 dark:border-gray-700 overflow-hidden relative group cursor-pointer hover:border-orange-300 dark:hover:border-orange-700 transition-colors"
+                    >
+                        {editingItem.image && !editingItem.image.includes('random') && editingItem.image !== '' ? (
                             <img src={editingItem.image} className="w-full h-full object-cover" />
                         ) : (
                             <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 dark:text-gray-500">
@@ -258,11 +305,13 @@ const MenuBuilder: React.FC = () => {
                             </div>
                         )}
                         {/* Overlay for existing image */}
-                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                             <div className="bg-white/90 dark:bg-gray-900/90 px-3 py-1.5 rounded-full flex items-center gap-2 text-xs font-bold shadow-lg">
-                                <ImageIcon size={14} /> Change
-                             </div>
-                        </div>
+                        {editingItem.image && (
+                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <div className="bg-white/90 dark:bg-gray-900/90 px-3 py-1.5 rounded-full flex items-center gap-2 text-xs font-bold shadow-lg">
+                                    <Upload size={14} /> Change
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Stock Switch */}
@@ -284,24 +333,40 @@ const MenuBuilder: React.FC = () => {
                         </label>
                     </div>
 
-                    {/* AI Magic Section */}
-                    <div className="relative">
+                    {/* Name & Veg/Non-Veg */}
+                    <div>
                         <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-2 mb-1.5 block">Item Name</label>
-                        <div className="flex gap-2">
+                        <div className="flex flex-col gap-3">
                              <input 
-                                className="flex-1 bg-gray-50 dark:bg-gray-800 border-transparent rounded-2xl px-5 py-4 text-base font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500/20 placeholder-gray-400 dark:placeholder-gray-600 focus:bg-white dark:focus:bg-gray-700 transition-all" 
+                                className="w-full bg-gray-50 dark:bg-gray-800 border-transparent rounded-2xl px-5 py-4 text-base font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500/20 placeholder-gray-400 dark:placeholder-gray-600 focus:bg-white dark:focus:bg-gray-700 transition-all" 
                                 placeholder="e.g. Truffle Pasta"
                                 value={editingItem.name}
                                 onChange={(e) => setEditingItem({...editingItem, name: e.target.value})}
                             />
-                             <button 
-                                onClick={handleGenerateAI}
-                                disabled={!editingItem.name || isGenerating}
-                                className="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 px-4 rounded-2xl font-bold text-xs flex flex-col items-center justify-center gap-1 min-w-[80px] hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors disabled:opacity-50"
-                            >
-                                {isGenerating ? <Loader2 size={16} className="animate-spin"/> : <Sparkles size={16} />}
-                                <span>AI Magic</span>
-                            </button>
+                            
+                            {/* Veg / Non-Veg Toggle */}
+                            <div className="flex bg-gray-50 dark:bg-gray-800 p-1 rounded-xl">
+                                <button
+                                    onClick={() => setEditingItem({...editingItem, itemType: 'veg'})}
+                                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-xs font-bold transition-all ${
+                                        editingItem.itemType === 'veg' 
+                                            ? 'bg-green-100 text-green-700 border-green-500 shadow-sm' 
+                                            : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                    }`}
+                                >
+                                    <Leaf size={14} /> Veg
+                                </button>
+                                <button
+                                    onClick={() => setEditingItem({...editingItem, itemType: 'non-veg'})}
+                                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-xs font-bold transition-all ${
+                                        editingItem.itemType === 'non-veg' 
+                                            ? 'bg-red-100 text-red-700 border-red-500 shadow-sm' 
+                                            : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                    }`}
+                                >
+                                    <Drumstick size={14} /> Non-Veg
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -335,11 +400,14 @@ const MenuBuilder: React.FC = () => {
                             <label className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-2 mb-1.5 block">Category</label>
                             <div className="relative">
                                 <select 
-                                    className="w-full bg-gray-50 dark:bg-gray-800 border-transparent rounded-2xl px-5 py-4 text-sm font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500/20 appearance-none focus:bg-white dark:focus:bg-gray-700 transition-all"
-                                    value={editingItem.category}
-                                    onChange={(e) => setEditingItem({...editingItem, category: e.target.value})}
+                                    className={`w-full bg-gray-50 dark:bg-gray-800 border-transparent rounded-2xl px-5 py-4 text-sm font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500/20 appearance-none focus:bg-white dark:focus:bg-gray-700 transition-all ${!editingItem.category ? 'text-gray-400 dark:text-gray-500' : ''}`}
+                                    value={editingItem.category || ''}
+                                    onChange={handleCategoryChange}
                                 >
+                                    <option value="" disabled>Select Category</option>
                                     {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                                    <option disabled>──────────</option>
+                                    <option value="__NEW__" className="font-bold text-orange-500">+ Add New Category</option>
                                 </select>
                                 <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-gray-400">
                                     <ChefHat size={16} />
@@ -351,13 +419,48 @@ const MenuBuilder: React.FC = () => {
                     <div className="pt-6 pb-2">
                         <button 
                             onClick={handleSave}
-                            className="w-full bg-gradient-to-r from-orange-500 to-red-600 text-white font-extrabold text-lg py-4 rounded-2xl shadow-xl shadow-orange-500/20 active:scale-[0.98] transition-all hover:to-red-700"
+                            disabled={!isFormValid}
+                            className={`w-full text-white font-extrabold text-lg py-4 rounded-2xl shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 ${
+                                isFormValid 
+                                ? 'bg-gradient-to-r from-orange-500 to-red-600 shadow-orange-500/20 hover:to-red-700' 
+                                : 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed text-gray-500 dark:text-gray-500 shadow-none'
+                            }`}
                         >
                             Save Item
                         </button>
                     </div>
                 </div>
             </div>
+
+            {/* Add Category Modal Overlay */}
+            {showCategoryInput && (
+                <div className="absolute inset-0 z-[60] flex items-center justify-center p-6 bg-black/40 backdrop-blur-[2px] animate-fade-in">
+                    <div className="bg-white dark:bg-gray-800 w-full max-w-xs rounded-2xl p-5 shadow-2xl animate-slide-up">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">New Category</h3>
+                        <input 
+                            autoFocus
+                            value={newCategoryName}
+                            onChange={(e) => setNewCategoryName(e.target.value)}
+                            placeholder="e.g. Specials"
+                            className="w-full bg-gray-100 dark:bg-gray-700 border-none rounded-xl px-4 py-3 text-sm font-bold mb-4 focus:ring-2 focus:ring-orange-500/20"
+                        />
+                        <div className="flex gap-2">
+                            <button 
+                                onClick={() => { setShowCategoryInput(false); setNewCategoryName(''); }}
+                                className="flex-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 py-3 rounded-xl text-xs font-bold"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={handleSaveNewCategory}
+                                className="flex-1 bg-orange-500 text-white py-3 rounded-xl text-xs font-bold"
+                            >
+                                Add
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
       )}
     </div>

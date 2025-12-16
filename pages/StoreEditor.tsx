@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MapPin, Upload, Eye, Save, Locate } from 'lucide-react';
+import { MapPin, Upload, Locate } from 'lucide-react';
 import { getStoreById, updateStore, addStore } from '../services/data';
 import { Store } from '../types';
 
@@ -18,6 +18,7 @@ const StoreEditor: React.FC = () => {
     lng: -74.0060,
     coverImage: 'https://picsum.photos/800/400?random=99',
     logo: 'https://picsum.photos/100/100?random=99',
+    rating: 5.0,
   });
 
   useEffect(() => {
@@ -65,9 +66,6 @@ const StoreEditor: React.FC = () => {
                     <Upload size={20} className="text-white" />
                  </div>
              </div>
-             <button className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm flex items-center gap-1 transition-colors">
-                <Eye size={12} /> Preview
-             </button>
          </div>
       </div>
 
@@ -119,7 +117,7 @@ const StoreEditor: React.FC = () => {
             <div className="h-40 bg-gray-200 dark:bg-gray-700 rounded-2xl overflow-hidden relative border border-gray-200 dark:border-gray-600 shadow-inner group">
                 <div 
                     className="absolute inset-0 bg-[url('https://maps.googleapis.com/maps/api/staticmap?center=40.7128,-74.0060&zoom=13&size=600x300&sensor=false&key=YOUR_KEY')] bg-cover bg-center opacity-70 group-hover:opacity-100 transition-opacity"
-                    style={{ backgroundImage: 'url(https://imgs.search.brave.com/5w2gNfT-jVwZl-25f0y3b_yV8jB2k5ZkFk_y3V2k5Zk/rs:fit:860:0:0/g:ce/aHR0cHM6Ly9tYXBz/Lm1hcHMgYXBpcy5j/b20vbWFwcy9hcGkv/c3RhdGljbWFwP2Nl/bnRlcj00MC43MTI4/LC03NC4wMDYwJnpv/b209MTQmc2l6ZT02/MDB4MzAwJm1hcHR5/cGU9cm9hZG1hcCZr/ZXk9QUl6YVN5RGp3/eHR4LWdkMkZqLW55/LV9sOV9sLV9sLV9s/LV9s&fake=1)'}}
+                    style={{ backgroundImage: 'url(https://imgs.search.brave.com/5w2gNfT-jVwZl-25f0y3b_yV8jB2k5ZkFk_y3V2k5Zk/rs:fit:860:0:0/g:ce/aHR0cHM6Ly9tYXBz/Lm1hcHMgYXBpcy5j/b20vbWFwcy9hcGkv/c3RhdGljbWFwP2Nl/bnRlcj00MC43MTI4/LC03NC4wMDYwJnpv/b209MTQmc2l6ZT02/MDB4MzAwJm1hcHR5/cGU9cm9hZG1hcCZr/ZXk9QUl6YVN5RGp3/eHR4LWdkMkZqLW55/LV9sOV9sLV9sLV9s/LV9sLV9s&fake=1)'}}
                 ></div>
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full text-orange-600 drop-shadow-md">
                     <MapPin size={32} fill="currentColor" />
